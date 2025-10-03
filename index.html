@@ -8,7 +8,7 @@
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 
-  <!-- Leaflet CSS (map) -->
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
 
   <!-- Page styles -->
@@ -21,7 +21,13 @@
       <div class="brand">
         <div class="brand-title">SPACE APPS CH</div>
       </div>
+
       <div class="top-actions">
+        <!-- visitor badge: very visible -->
+        <div id="visitorBadge" class="visitor-badge" title="Number of visitors">
+          👥 <span id="visitCountBadge">0</span>
+        </div>
+
         <button class="btn-ghost">Spece-Apps-CH</button>
         <div class="avatar" title="User">&#9786;</div>
       </div>
@@ -57,8 +63,16 @@
     <!-- DASHBOARD -->
     <section id="dashboard" class="panel dashboard">
       <div class="dashboard-left">
+        <!-- Search bar sits above the single map -->
+        <div class="map-search">
+          <input type="text" id="mapSearchInput" placeholder="Search location (e.g. 'Blatten, Switzerland' or 46.38,7.75)">
+          <button id="mapSearchBtn" aria-label="Search">🔍</button>
+        </div>
+
+        <!-- single map container (only one in page) -->
         <div id="map" class="map"></div>
       </div>
+
       <aside class="dashboard-right">
         <div class="card alerts">
           <h3>CRITICAL ALERTS</h3>
@@ -87,27 +101,17 @@
       </aside>
     </section>
 
-    <!-- Visualizations section -->
-    <section id="visualizations" class="panel">
+    <!-- Visualizations section (map NOT present here) -->
+    <section id="visualizations" class="panel" style="display:none">
       <h2>VISUALIZATIONS</h2>
       <div class="grid">
-        <div class="viz-card">
-          <img src="assets/s2_thumb.png" alt="Sentinel-2 before" />
-          <h4>Sentinel-2 before</h4>
-        </div>
-        <div class="viz-card">
-          <img src="assets/velocity_thumb.png" alt="Velocity" />
-          <h4>Velocity (m/day)</h4>
-        </div>
-        <div class="viz-card">
-          <img src="assets/amplitude_diff_thumb.png" alt="Amplitude diff" />
-          <h4>Amplitude difference</h4>
-        </div>
+        <div class="viz-card"><img src="assets/s2_thumb.png" alt="Sentinel-2 before" /><h4>Sentinel-2 before</h4></div>
+        <div class="viz-card"><img src="assets/velocity_thumb.png" alt="Velocity" /><h4>Velocity (m/day)</h4></div>
+        <div class="viz-card"><img src="assets/amplitude_diff_thumb.png" alt="Amplitude diff" /><h4>Amplitude difference</h4></div>
       </div>
     </section>
 
-    <!-- Story map teaser -->
-    <section id="story" class="panel">
+    <section id="story" class="panel" style="display:none">
       <h2>STORY MAP</h2>
       <div class="story-row">
         <img src="https://i.postimg.cc/DZmDbxC4/Swisstopo-Rappid-Mapping-2025-May-30-Blatten-DSC6477-cropped.jpg" alt="story thumbnail" />
@@ -119,7 +123,12 @@
       </div>
     </section>
 
-    <!-- Features -->
+    <section id="about" class="panel" style="display:none">
+      <h2>ABOUT</h2>
+      <p>About content goes here.</p>
+    </section>
+
+    <!-- Features + quote -->
     <section class="features">
       <div class="features-inner">
         <div class="feature"><div class="icon">🛰</div><div>Earth Observation</div></div>
@@ -129,12 +138,8 @@
       </div>
     </section>
 
-    <!-- Quote -->
     <section class="quote">
-      <blockquote>
-        "Code for humanity. Build for resilience."
-        <cite>— NASA Space Apps Challenge 2025</cite>
-      </blockquote>
+      <blockquote>"Code for humanity. Build for resilience." <cite>— NASA Space Apps Challenge 2025</cite></blockquote>
     </section>
   </main>
 
