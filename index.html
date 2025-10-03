@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Save Blatten & Beyond — Dashboard</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <!-- Leaflet CSS (map) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+
+  <!-- Page styles -->
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-title">SPACE APPS CH</div>
+      </div>
+      <div class="top-actions">
+        <button class="btn-ghost">Spece-Apps-CH</button>
+        <div class="avatar" title="User">&#9786;</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero card -->
+  <section class="hero">
+    <div class="hero-card">
+      <div class="hero-left">
+        <div class="kicker">SPACE APPS CH</div>
+        <h1 class="hero-title">SAVE BLATTEN & BEYOND</h1>
+        <p class="hero-sub">Rapid response to natural and man-made disasters — SAR-powered situational awareness.</p>
+        <a class="cta" href="#dashboard">EXPLORE THE PLATFORM</a>
+      </div>
+      <div class="hero-right">
+        <!-- top-right can hold NASA/ESA logos -->
+        <img src="https://i.postimg.cc/ZRXnzdk3/SARGuardians-logo.jpg" alt="SARGuardians" class="partner-logo"/>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Tabs -->
+  <nav class="tabs">
+    <ul>
+      <li class="active"><a href="#dashboard">DASHBOARD</a></li>
+      <li><a href="#visualizations">VISUALIZATIONS</a></li>
+      <li><a href="#story">STORY</a></li>
+      <li><a href="#about">ABOUT</a></li>
+    </ul>
+  </nav>
+
+  <main class="container">
+    <!-- DASHBOARD (default) -->
+    <section id="dashboard" class="panel dashboard">
+      <div class="dashboard-left">
+        <div id="map" class="map"></div>
+      </div>
+
+      <aside class="dashboard-right">
+        <div class="card alerts">
+          <h3>CRITICAL ALERTS</h3>
+          <div class="alert-item">
+            <div class="alert-title">Glacier collapse — Blatten</div>
+            <div class="alert-meta">Max LOS velocity: <strong>2.5 m/day</strong></div>
+          </div>
+          <div class="mini-gauge">
+            <div class="gauge">2.5 <span>m/day</span></div>
+          </div>
+        </div>
+
+        <div class="card chart">
+          <h3>SAR intensity over time</h3>
+          <div id="mini-chart" style="height:120px;display:flex;align-items:center;justify-content:center;color:#888">
+            <!-- placeholder: replace with chart lib -->
+            <small>Time series preview</small>
+          </div>
+        </div>
+
+        <div class="card layers">
+          <h4>DATA LAYERS</h4>
+          <label><input type="checkbox" id="toggle-s2" checked> Sentinel-2 (RGB)</label><br/>
+          <label><input type="checkbox" id="toggle-vel" checked> Velocity overlay</label><br/>
+          <label><input type="checkbox" id="toggle-geo" checked> Change polygon</label>
+        </div>
+      </aside>
+    </section>
+
+    <!-- Visualizations section (simple previews) -->
+    <section id="visualizations" class="panel">
+      <h2>VISUALIZATIONS</h2>
+      <div class="grid">
+        <div class="viz-card">
+          <img src="assets/s2_thumb.png" alt="Sentinel-2 before" />
+          <h4>Sentinel-2 before</h4>
+        </div>
+        <div class="viz-card">
+          <img src="assets/velocity_thumb.png" alt="Velocity" />
+          <h4>Velocity (m/day)</h4>
+        </div>
+        <div class="viz-card">
+          <img src="assets/amplitude_diff_thumb.png" alt="Amplitude diff" />
+          <h4>Amplitude difference</h4>
+        </div>
+      </div>
+    </section>
+
+    <!-- Story map teaser -->
+    <section id="story" class="panel">
+      <h2>STORY MAP</h2>
+      <div class="story-row">
+        <img src="https://i.postimg.cc/DZmDbxC4/Swisstopo-Rappid-Mapping-2025-May-30-Blatten-DSC6477-cropped.jpg" alt="story thumbnail" />
+        <div class="story-text">
+          <h3>The Blatten event — what happened?</h3>
+          <p>Interactive timeline and before/after maps show glacier destabilization, early warning signals, and response actions.</p>
+          <a class="cta small" href="#story">Open story map</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Key features dark row -->
+    <section class="features">
+      <div class="features-inner">
+        <div class="feature">
+          <div class="icon">🛰</div>
+          <div>Earth Observation</div>
+        </div>
+        <div class="feature">
+          <div class="icon">🌐</div>
+          <div>Global Coverage</div>
+        </div>
+        <div class="feature">
+          <div class="icon">⚠️</div>
+          <div>Rapid Response</div>
+        </div>
+        <div class="feature">
+          <div class="icon">📊</div>
+          <div>Data Science & AI</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Quote -->
+    <section class="quote">
+      <blockquote>
+        "Code for humanity. Build for resilience."
+        <cite>— NASA Space Apps Challenge 2025</cite>
+      </blockquote>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div>© Save Blatten & Beyond</div>
+      <div class="social">Follow: <a href="#">Twitter</a> • <a href="#">GitHub</a></div>
+    </div>
+  </footer>
+
+  <!-- Leaflet + app script -->
+  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
