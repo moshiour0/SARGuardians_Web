@@ -146,58 +146,39 @@ async function incrementVisitorCounter() {
   const apiUrl = 'https://api.counterapi.dev/v2/sarguardians/sarguardians/up';
   const fallbackKey = 'saveblatten_visits_v1';
 
-  // Helper to safely set badge and optionally mark it as local
-  const setBadge = (n, { local=false } = {}) => {
-    badge.textContent = n;
-    badge.dataset.local = local ? '1' : '';
-    // Optionally add a subtle visual indicator for local values:
-    // badge.style.opacity = local ? '0.8' : '';
-  };
-
   try {
-    const resp = await fetch(apiUrl, { method: 'GET' });
+    console.log('CounterAPI: fetching', apiUrl);
+    const resp = await fetch(apiUrl, { method: 'GET', mode: 'cors', cache: 'no-store' });
+    console.log('CounterAPI: response.ok=', resp.ok, 'status=', resp.status);
+
     if (!resp.ok) {
-      console.warn('CounterAPI responded with status', resp.status);
-      // Do NOT increment local fallback here — we'll keep previous value
+      console.warn('CounterAPI returned non-OK status', resp.status);
+      // show last-known fallback if available (do not increment)
       const prev = parseInt(localStorage.getItem(fallbackKey) || '0', 10);
-      if (prev) setBadge(prev, { local: true });
+      if (prev) { badge.textContent = prev; badge.dataset.local = '1'; }
       return;
     }
 
     const data = await resp.json();
-    // Try multiple known possible shapes:
-    const maybe =
-      // v2 client examples: { value: 123 }
-      (typeof data.value === 'number' && data.value) ||
-      // some examples in docs: { data: { up_count: 123 } }
-      (data && data.data && (data.data.up_count || data.data.count || data.data.value)) ||
-      // legacy/other: { count: 123 } or { data:123 }
-      (typeof data.count === 'number' && data.count) ||
-      (typeof data.data === 'number' && data.data);
+    console.log('CounterAPI json:', data);
 
-    if (maybe) {
-      setBadge(Number(maybe), { local: false });
-      // keep localStorage in sync as a last-known-good copy (but don't *pretend* it's authoritative)
-      try { localStorage.setItem(fallbackKey, String(maybe)); } catch(e) { /* ignore */ }
-      return;
-    } else {
-      console.warn('CounterAPI: unexpected JSON shape', data);
-      // If API worked (200) but we can't parse count, show previous fallback if any:
-      const prev = parseInt(localStorage.getItem(fallbackKey) || '0', 10);
-      if (prev) setBadge(prev, { local: true });
+    // Try common shapes
+    const up = (data && data.data && data.data.up_count) || data.value || data.count || (typeof data.data === 'number' && data.data);
+    if (up !== undefined && up !== null) {
+      badge.textContent = Number(up);
+      badge.dataset.local = '';
+      try { localStorage.setItem(fallbackKey, String(up)); } catch {}
       return;
     }
-  } catch (err) {
-    // network/CORS/runtime error — don't increment blindly
-    console.warn('CounterAPI fetch failed:', err);
+
+    console.warn('CounterAPI: unexpected JSON shape', data);
     const prev = parseInt(localStorage.getItem(fallbackKey) || '0', 10);
-    if (prev) {
-      // show the last-known local value but mark it as local-only
-      setBadge(prev, { local: true });
-    } else {
-      // nothing known — set to 1 locally if you want to track visits, but clearly mark it local
-      try { localStorage.setItem(fallbackKey, '1'); setBadge(1, { local: true }); } catch(e) {}
-    }
+    if (prev) { badge.textContent = prev; badge.dataset.local = '1'; }
+  } catch (err) {
+    console.warn('CounterAPI fetch failed (network/CORS):', err);
+    // show last-known but do NOT increment automatically
+    const prev = parseInt(localStorage.getItem(fallbackKey) || '0', 10);
+    if (prev) { badge.textContent = prev; badge.dataset.local = '1'; }
   }
 }
 
