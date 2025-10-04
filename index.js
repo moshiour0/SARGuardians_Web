@@ -143,42 +143,68 @@ async function incrementVisitorCounter() {
   const badge = document.getElementById('visitCountBadge');
   if (!badge) return;
 
-  const apiUrl = 'https://api.counterapi.dev/v2/sarguardians/sarguardians/up';
+  // ✅ USE YOUR VERCEL API:
+  const proxyEndpoint = 'https://sar-guardians-web.vercel.app/api/counter';
   const fallbackKey = 'saveblatten_visits_v1';
 
+  const setBadge = (n, { local = false, note = '' } = {}) => {
+    badge.textContent = n;
+    if (local) {
+      badge.dataset.local = '1';
+      badge.title = note || 'Local last-known value (remote unreachable)';
+    } else {
+      delete badge.dataset.local;
+      badge.title = '';
+    }
+  };
+
   try {
-    console.log('CounterAPI: fetching', apiUrl);
-    const resp = await fetch(apiUrl, { method: 'GET', mode: 'cors', cache: 'no-store' });
-    console.log('CounterAPI: response.ok=', resp.ok, 'status=', resp.status);
+    const resp = await fetch(proxyEndpoint, {
+      method: 'GET',
+      cache: 'no-store'
+    });
 
     if (!resp.ok) {
-      console.warn('CounterAPI returned non-OK status', resp.status);
-      // show last-known fallback if available (do not increment)
+      console.warn('Proxy returned non-OK status', resp.status);
       const prev = parseInt(localStorage.getItem(fallbackKey) || '0', 10);
-      if (prev) { badge.textContent = prev; badge.dataset.local = '1'; }
+      if (prev)
+        setBadge(prev, { local: true, note: 'Remote returned non-OK status' });
       return;
     }
 
     const data = await resp.json();
-    console.log('CounterAPI json:', data);
+    const up =
+      (data && data.data && data.data.up_count) ||
+      data.value ||
+      data.count ||
+      (typeof data.data === 'number' && data.data);
 
-    // Try common shapes
-    const up = (data && data.data && data.data.up_count) || data.value || data.count || (typeof data.data === 'number' && data.data);
     if (up !== undefined && up !== null) {
-      badge.textContent = Number(up);
-      badge.dataset.local = '';
-      try { localStorage.setItem(fallbackKey, String(up)); } catch {}
+      setBadge(Number(up), { local: false });
+      try {
+        localStorage.setItem(fallbackKey, String(up));
+      } catch (_) {}
       return;
     }
 
-    console.warn('CounterAPI: unexpected JSON shape', data);
+    console.warn('Proxy: unexpected JSON shape', data);
     const prev = parseInt(localStorage.getItem(fallbackKey) || '0', 10);
-    if (prev) { badge.textContent = prev; badge.dataset.local = '1'; }
+    if (prev)
+      setBadge(prev, { local: true, note: 'Unexpected JSON shape' });
   } catch (err) {
-    console.warn('CounterAPI fetch failed (network/CORS):', err);
-    // show last-known but do NOT increment automatically
+    console.warn('Proxy fetch failed:', err);
     const prev = parseInt(localStorage.getItem(fallbackKey) || '0', 10);
-    if (prev) { badge.textContent = prev; badge.dataset.local = '1'; }
+    if (prev) {
+      setBadge(prev, {
+        local: true,
+        note: 'Request blocked or network error — value is local last-known'
+      });
+    } else {
+      setBadge(0, {
+        local: true,
+        note: 'Request blocked or network error — no last-known value'
+      });
+    }
   }
 }
 
