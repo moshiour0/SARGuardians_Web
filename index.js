@@ -137,8 +137,7 @@
     const initial = active ? (active.getAttribute('href')||'').replace('#','') : 'dashboard';
     showPanelById(initial || 'dashboard');
   }
-
-  // --- CounterAPI / visitor badge ---
+// --- CounterAPI / visitor badge ---
 async function incrementVisitorCounter() {
   const badge = document.getElementById('visitCountBadge');
   if (!badge) return;
@@ -173,11 +172,9 @@ async function incrementVisitorCounter() {
     }
 
     const data = await resp.json();
-    const up =
-      (data && data.data && data.data.up_count) ||
-      data.value ||
-      data.count ||
-      (typeof data.data === 'number' && data.data);
+
+    // ✅ NEW: read up_count directly from our Vercel proxy
+    const up = data.up_count;
 
     if (up !== undefined && up !== null) {
       setBadge(Number(up), { local: false });
