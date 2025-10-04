@@ -1,41 +1,43 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8" />  
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Save Blatten & Beyond — Dashboard</title>
+  <meta name="description" content="SAR-powered rapid response for glacier hazards — Save Blatten & Beyond" />
 
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
 
   <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" crossorigin=""/>
 
   <!-- Page styles -->
   <link rel="stylesheet" href="index.css" />
 </head>
 <body>
   <!-- Topbar -->
-  <header class="topbar">
+  <header class="topbar" role="banner">
     <div class="topbar-inner">
-      <div class="brand">
+      <div class="brand" aria-hidden="true">
         <div class="brand-title">SPACE APPS CH</div>
       </div>
 
-      <div class="top-actions">
+      <div class="top-actions" role="navigation" aria-label="top actions">
         <!-- visitor badge: very visible -->
-        <div id="visitorBadge" class="visitor-badge" title="Number of visitors">
-          👥 <span id="visitCountBadge">0</span>
+        <div id="visitorBadge" class="visitor-badge" title="Number of visitors" aria-live="polite">
+          <span class="visitor-emoji">👥</span>
+          <span id="visitCountBadge">0</span>
         </div>
 
-        <button class="btn-ghost">Spece-Apps-CH</button>
-        <div class="avatar" title="User">&#9786;</div>
+        <button class="btn-ghost" type="button">Spece-Apps-CH</button>
+        <button class="avatar" title="User" type="button" aria-label="User profile">🙂</button>
       </div>
     </div>
   </header>
 
   <!-- Hero card -->
-  <section class="hero">
+  <section class="hero" role="region" aria-label="Hero">
     <div class="hero-card">
       <div class="hero-left">
         <div class="kicker">SPACE APPS CH</div>
@@ -43,14 +45,14 @@
         <p class="hero-sub">Rapid response to natural and man-made disasters — SAR-powered situational awareness.</p>
         <a class="cta" href="#dashboard">EXPLORE THE PLATFORM</a>
       </div>
-      <div class="hero-right">
+      <div class="hero-right" aria-hidden="true">
         <img src="https://i.postimg.cc/ZRXnzdk3/SARGuardians-logo.jpg" alt="SARGuardians" class="partner-logo"/>
       </div>
     </div>
   </section>
 
   <!-- Tabs -->
-  <nav class="tabs">
+  <nav class="tabs" aria-label="Main sections">
     <ul>
       <li class="active"><a href="#dashboard">DASHBOARD</a></li>
       <li><a href="#visualizations">VISUALIZATIONS</a></li>
@@ -59,23 +61,28 @@
     </ul>
   </nav>
 
-  <main class="container">
+  <main class="container" role="main">
     <!-- DASHBOARD -->
-    <section id="dashboard" class="panel dashboard">
+    <section id="dashboard" class="panel dashboard" aria-labelledby="dashboard-heading">
+      <h2 id="dashboard-heading" class="sr-only">Dashboard</h2>
+
       <div class="dashboard-left">
         <!-- Search bar sits above the single map -->
         <div class="map-search">
-          <input type="text" id="mapSearchInput" placeholder="Search location (e.g. 'Blatten, Switzerland' or 46.38,7.75)">
-          <button id="mapSearchBtn" aria-label="Search">🔍</button>
+          <label for="mapSearchInput" class="sr-only">Search location</label>
+          <input type="text" id="mapSearchInput" placeholder="Search location (e.g. 'Blatten, Switzerland' or 46.38,7.75)" />
+          <button id="mapSearchBtn" aria-label="Search" type="button">🔍</button>
         </div>
 
-        <!-- single map container (only one in page) -->
-        <div id="map" class="map"></div>
+        <!-- single map container (only one #map used for dashboard) -->
+        <div id="map" class="map" role="region" aria-label="Dashboard map"></div>
       </div>
 
-      <aside class="dashboard-right">
+      <aside class="dashboard-right" aria-labelledby="alerts-heading">
+        <h3 id="alerts-heading" class="sr-only">Alerts and widgets</h3>
+
         <div class="card alerts">
-          <h3>CRITICAL ALERTS</h3>
+          <h4>CRITICAL ALERTS</h4>
           <div class="alert-item">
             <div class="alert-title">Glacier collapse — Blatten</div>
             <div class="alert-meta">Max LOS velocity: <strong>2.5 m/day</strong></div>
@@ -86,17 +93,15 @@
         </div>
 
         <div class="card chart">
-          <h3>SAR intensity over time</h3>
-          <div id="mini-chart" style="height:120px;display:flex;align-items:center;justify-content:center;color:#888">
-            <small>Time series preview</small>
-          </div>
+          <h4>SAR intensity over time</h4>
+          <div id="mini-chart" class="mini-chart">Time series preview</div>
         </div>
 
         <div class="card layers">
           <h4>DATA LAYERS</h4>
-          <label><input type="checkbox" id="toggle-s2" checked> Sentinel-2 (RGB)</label><br/>
-          <label><input type="checkbox" id="toggle-vel" checked> Velocity overlay</label><br/>
-          <label><input type="checkbox" id="toggle-geo" checked> Change polygon</label>
+          <label><input type="checkbox" id="toggle-s2" checked /> Sentinel-2 (RGB)</label><br/>
+          <label><input type="checkbox" id="toggle-vel" checked /> Velocity overlay</label><br/>
+          <label><input type="checkbox" id="toggle-geo" checked /> Change polygon</label>
         </div>
       </aside>
     </section>
@@ -111,18 +116,50 @@
       </div>
     </section>
 
+    <!-- STORY MAP -->
     <section id="story" class="panel" style="display:none">
       <h2>STORY MAP</h2>
-      <div class="story-row">
-        <img src="https://i.postimg.cc/DZmDbxC4/Swisstopo-Rappid-Mapping-2025-May-30-Blatten-DSC6477-cropped.jpg" alt="story thumbnail" />
-        <div class="story-text">
-          <h3>The Blatten event — what happened?</h3>
-          <p>Interactive timeline and before/after maps show glacier destabilization, early warning signals, and response actions.</p>
-          <a class="cta small" href="#story">Open story map</a>
+
+      <div id="storymap">
+        <!-- Left: Narrative -->
+        <div id="scroller">
+          <div class="step" data-coords="46.38,7.75" data-zoom="12">
+            <h3>Introduction</h3>
+            <p>In May 2025, Blatten witnessed an unprecedented glacier collapse. Our platform tracked early warning signals using SAR data.</p>
+            <img src="your_intro_image.jpg" alt="Intro" class="story-img"/>
+          </div>
+
+          <div class="step" data-coords="46.40,7.70" data-zoom="13">
+            <h3>Early Warning Signals</h3>
+            <p>Satellite imagery showed accelerated glacier velocity exceeding 2.5 m/day, a red flag for instability.</p>
+            <img src="your_sentinel_image.jpg" alt="Sentinel Data" class="story-img"/>
+          </div>
+
+          <div class="step" data-coords="46.38,7.75" data-zoom="14">
+            <h3>The Collapse</h3>
+            <p>On May 30th, the glacier collapsed, impacting nearby villages. Rescue operations were launched immediately.</p>
+            <img src="your_collapse_image.jpg" alt="Collapse" class="story-img"/>
+          </div>
+
+          <div class="step" data-coords="46.39,7.80" data-zoom="13">
+            <h3>Community Response</h3>
+            <p>Local authorities evacuated zones, set up shelters, and coordinated with international disaster teams.</p>
+            <img src="your_response_image.jpg" alt="Response" class="story-img"/>
+          </div>
+
+          <div class="step" data-coords="46.37,7.78" data-zoom="12">
+            <h3>Future Resilience</h3>
+            <p>With real-time SAR monitoring, communities can prepare earlier for similar events.</p>
+            <img src="your_future_image.jpg" alt="Future" class="story-img"/>
+          </div>
         </div>
+
+        <!-- Right: story map (unique id so it doesn't conflict with dashboard) -->
+        <div id="storymap-map" class="story-map" role="region" aria-label="Story map"></div>
       </div>
     </section>
 
+    <!-- About -->
     <section id="about" class="panel" style="display:none">
       <h2>ABOUT</h2>
       <p>About content goes here.</p>
@@ -144,17 +181,23 @@
   </main>
 
   <!-- Footer -->
-  <footer class="site-footer">
+  <footer class="site-footer" role="contentinfo">
     <div class="footer-inner">
       <div>© Save Blatten & Beyond</div>
-      <div class="social">Follow: <a href="#">Twitter</a> • <a href="#">GitHub</a></div>
+      <div class="social">Follow: <a href="#" rel="noopener">Twitter</a> • <a href="#" rel="noopener">GitHub</a></div>
     </div>
   </footer>
 
   <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
+  <script defer src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"></script>
 
-  <!-- Your JS -->
-  <script src="index.js"></script>
+  <!-- Your JS (existing index.js will handle dashboard map and tabs) -->
+  <script defer src="index.js"></script>
+
+  <!-- NOTE:
+       The story map container (#storymap-map) is present but needs a small JS module (storymap.js)
+       to initialize a separate Leaflet map and wire the ".step" scroll interactions.
+       Tell me when you want that and I'll provide it.
+  -->
 </body>
 </html>

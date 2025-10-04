@@ -1,189 +1,242 @@
-// index.js — updated: map only in dashboard, search via Nominatim, visitor badge (local or server)
-let map = null;
-let s2Layer = null;
-let velLayer = null;
-let geoJsonLayer = null;
-let searchMarker = null;
+// index.js - Full robust replacement
+// Features:
+// - Map in #dashboard only
+// - Nominatim search (text or "lat,lon")
+// - Layer toggles: #toggle-s2, #toggle-vel, #toggle-geo
+// - Loads geojson from multiple paths
+// - Visitor badge with CounterAPI + fallback
+// - Tab handling with map.invalidateSize()
+// - Fully resilient
 
-// ---------- MAP INITIALIZATION (only once) ----------
-function initMapIfNeeded() {
-  if (map) return;
-  map = L.map('map', { attributionControl: false }).setView([46.38, 7.75], 13);
+(function () {
+  'use strict';
 
-  // Base layer
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+  // --- Utilities ---
+  const $ = (sel, scope = document) => scope.querySelector(sel);
+  const $$ = (sel, scope = document) => Array.from(scope.querySelectorAll(sel));
+  const safe = (fn) => { try { return fn(); } catch (e) { console.warn(e); } };
 
-  // Example overlay placeholders (replace with your tile URLs if available)
-  s2Layer = L.tileLayer('/web_tiles/s2_after/{z}/{x}/{y}.png', { opacity: 1.0 });
-  velLayer = L.tileLayer('/web_tiles/velocity/{z}/{x}/{y}.png', { opacity: 0.9 });
+  // --- State ---
+  let map = null;
+  let s2Layer = null;
+  let velLayer = null;
+  let geoJsonLayer = null;
+  let searchMarker = null;
 
-  // Add initial overlays according to the checkboxes (checkbox listeners will toggle)
-  const toggleS2 = document.getElementById('toggle-s2');
-  const toggleVel = document.getElementById('toggle-vel');
-  if (toggleS2 && toggleS2.checked) map.addLayer(s2Layer);
-  if (toggleVel && toggleVel.checked) map.addLayer(velLayer);
+  function getMapContainer() {
+    const dashboardMap = document.querySelector('#dashboard #map');
+    if (dashboardMap) return dashboardMap;
+    return document.getElementById('map');
+  }
 
-  // Load simplified geojson polygon (non-blocking)
-  fetch('/derived/grd_outputs/amplitude_change.geojson').then(r => {
-    if (!r.ok) throw new Error('No geojson');
-    return r.json();
-  }).then(geojson => {
-    geoJsonLayer = L.geoJSON(geojson, { style: { color: '#ff3b3b', weight: 2, fillOpacity: 0.12 } });
-    if (document.getElementById('toggle-geo')?.checked) geoJsonLayer.addTo(map);
-    try { map.fitBounds(geoJsonLayer.getBounds(), { padding: [30,30] }); } catch (e) {}
-  }).catch(err => console.log('GeoJSON load:', err.message));
+  // --- Map initialization ---
+  function initMapIfNeeded() {
+    if (map) return map;
+    const container = getMapContainer();
+    if (!container) { console.warn('No #map container found. Map initialization skipped.'); return null; }
 
-  // Map click: popup coords
-  map.on('click', (e) => {
-    const lat = e.latlng.lat.toFixed(6), lon = e.latlng.lng.toFixed(6);
-    L.popup().setLatLng(e.latlng).setContent(`<b>Location</b><br>${lat}, ${lon}`).openOn(map);
-  });
+    map = L.map(container, { attributionControl: false }).setView([46.38, 7.75], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, crossOrigin: true }).addTo(map);
 
-  // Setup layer checkbox listeners
-  document.getElementById('toggle-s2')?.addEventListener('change', (ev) => {
-    ev.target.checked ? map.addLayer(s2Layer) : map.removeLayer(s2Layer);
-  });
-  document.getElementById('toggle-vel')?.addEventListener('change', (ev) => {
-    ev.target.checked ? map.addLayer(velLayer) : map.removeLayer(velLayer);
-  });
-  document.getElementById('toggle-geo')?.addEventListener('change', (ev) => {
-    if (!geoJsonLayer) return;
-    ev.target.checked ? map.addLayer(geoJsonLayer) : map.removeLayer(geoJsonLayer);
-  });
-}
+    try { s2Layer = L.tileLayer('/web_tiles/s2_after/{z}/{x}/{y}.png', { opacity: 1.0 }); } catch (e) { s2Layer = null; }
+    try { velLayer = L.tileLayer('/web_tiles/velocity/{z}/{x}/{y}.png', { opacity: 0.9 }); } catch (e) { velLayer = null; }
 
-// ---------- Geocoding (Nominatim) ----------
-async function geocodeNominatim(query) {
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=6&addressdetails=1`;
-  const resp = await fetch(url, { headers: { 'Accept-Language': 'en' }});
-  if (!resp.ok) throw new Error('Geocoding failed');
-  return resp.json();
-}
+    const tS2 = $('#toggle-s2'); if (tS2 && s2Layer && tS2.checked) safe(() => map.addLayer(s2Layer));
+    const tVel = $('#toggle-vel'); if (tVel && velLayer && tVel.checked) safe(() => map.addLayer(velLayer));
 
-function placeSearchMarker(lat, lon, label) {
-  if (!map) return;
-  if (searchMarker) map.removeLayer(searchMarker);
-  searchMarker = L.marker([lat, lon]).addTo(map);
-  if (label) searchMarker.bindPopup(label).openPopup();
-  map.flyTo([lat, lon], 14, { animate: true, duration: 0.9 });
-}
+    if (tS2) tS2.addEventListener('change', (ev) => { if (!s2Layer) return; ev.target.checked ? safe(() => map.addLayer(s2Layer)) : safe(() => map.removeLayer(s2Layer)); });
+    if (tVel) tVel.addEventListener('change', (ev) => { if (!velLayer) return; ev.target.checked ? safe(() => map.addLayer(velLayer)) : safe(() => map.removeLayer(velLayer)); });
 
-// ---------- UI: tabs, search, visitor counter ----------
-function initUI() {
-  // Tabs -> show/hide sections, keep map only in dashboard
-  document.querySelectorAll('.tabs a').forEach(a => {
-    a.addEventListener('click', function (ev) {
-      ev.preventDefault();
-      document.querySelectorAll('.tabs li').forEach(li => li.classList.remove('active'));
-      this.parentElement.classList.add('active');
+    loadGeoJson();
 
-      document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
-      const id = this.getAttribute('href').substring(1);
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.style.display = (id === 'dashboard') ? 'flex' : 'block';
-
-      if (id === 'dashboard') {
-        // ensure map is created and resized
-        initMapIfNeeded();
-        setTimeout(() => {
-          try {
-            map.invalidateSize(true);
-            if (geoJsonLayer) try { map.fitBounds(geoJsonLayer.getBounds(), { padding:[30,30] }); } catch(e){}
-          } catch(e){ console.warn('invalidate size', e); }
-        }, 240);
-      }
+    map.on('click', (e) => {
+      const lat = e.latlng.lat.toFixed(6), lon = e.latlng.lng.toFixed(6);
+      L.popup().setLatLng(e.latlng).setContent(`<b>Location</b><br>${lat}, ${lon}`).openOn(map);
     });
-  });
 
-  // Search: enter key and click
-  const searchInput = document.getElementById('mapSearchInput');
-  const searchBtn = document.getElementById('mapSearchBtn');
+    return map;
+  }
 
-  // Enter triggers search
-  searchInput?.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Enter') { ev.preventDefault(); searchBtn.click(); }
-  });
+  // --- Load GeoJSON ---
+  async function loadGeoJson() {
+    const candidates = [
+      '/derived/grd_outputs/amplitude_change.geojson',
+      '/derived/grd_outputs/amplitude_change.json',
+      'derived/grd_outputs/amplitude_change.geojson',
+      'assets/amplitude_change.geojson'
+    ];
+    for (const url of candidates) {
+      try {
+        const resp = await fetch(url);
+        if (!resp.ok) continue;
+        const gj = await resp.json();
+        geoJsonLayer = L.geoJSON(gj, { style: { color: '#ff3b3b', weight: 2, fillOpacity: 0.12 } });
+        const tGeo = $('#toggle-geo'); 
+        if (tGeo && tGeo.checked) geoJsonLayer.addTo(map);
+        if (tGeo && !tGeo._geoToggled) {
+          tGeo._geoToggled = true;
+          tGeo.addEventListener('change', (ev) => {
+            if (!geoJsonLayer) return;
+            ev.target.checked ? map.addLayer(geoJsonLayer) : map.removeLayer(geoJsonLayer);
+          });
+        }
+        try { map.fitBounds(geoJsonLayer.getBounds(), { padding: [30,30] }); } catch(e) {}
+        console.log('Loaded GeoJSON from', url);
+        return;
+      } catch(err) {}
+    }
+    console.info('No GeoJSON found in candidate paths.');
+  }
 
-  searchBtn?.addEventListener('click', async () => {
-    const q = searchInput.value.trim();
-    if (!q) { alert("Type a place or lat,lon"); return; }
+  // --- Nominatim geocode ---
+  async function geocodeNominatim(q) {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=6&addressdetails=1`;
+    const resp = await fetch(url, { headers: { 'Accept-Language':'en' } });
+    if (!resp.ok) throw new Error('Geocoding failed');
+    return resp.json();
+  }
 
-    // if input is coordinates "lat, lon"
-    const coords = q.match(/^\s*([+-]?\d+(\.\d+)?)\s*[ ,;]\s*([+-]?\d+(\.\d+)?)\s*$/);
-    if (coords) {
-      const lat = parseFloat(coords[1]), lon = parseFloat(coords[3]);
+  // --- Place search marker ---
+  function placeSearchMarker(lat, lon, label) {
+    if (!map) initMapIfNeeded();
+    if (!map) { alert('Map not available'); return; }
+    if (searchMarker) map.removeLayer(searchMarker);
+    searchMarker = L.marker([lat, lon]).addTo(map);
+    if (label) searchMarker.bindPopup(label).openPopup();
+    map.flyTo([lat, lon], 14, { animate: true, duration: 0.9 });
+  }
+
+  // --- Tabs / panels ---
+  function showPanelById(id) {
+    $$('.panel').forEach(p => p.style.display = 'none');
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = (id === 'dashboard') ? 'flex' : 'block';
+    if (id === 'dashboard') {
       initMapIfNeeded();
-      placeSearchMarker(lat, lon, `Coordinates: ${lat.toFixed(6)}, ${lon.toFixed(6)}`);
+      setTimeout(() => {
+        try { map.invalidateSize(true); } catch(e) {}
+        if (geoJsonLayer) try { map.fitBounds(geoJsonLayer.getBounds(), { padding:[30,30] }); } catch(e) {}
+      }, 240);
+    }
+  }
+
+  function initTabs() {
+    const tabAnchors = $$('.tabs a');
+    if (!tabAnchors.length) return;
+    tabAnchors.forEach(a => {
+      a.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        $$('.tabs li').forEach(li => li.classList.remove('active'));
+        const li = a.closest('li'); if (li) li.classList.add('active');
+        const id = (a.getAttribute('href')||'').replace('#','');
+        if (id) showPanelById(id);
+      });
+    });
+    const active = document.querySelector('.tabs li.active a');
+    const initial = active ? (active.getAttribute('href')||'').replace('#','') : 'dashboard';
+    showPanelById(initial || 'dashboard');
+  }
+
+  // --- CounterAPI / visitor badge ---
+async function incrementVisitorCounter() {
+  const badge = document.getElementById('visitCountBadge');
+  if (!badge) return;
+
+  const apiUrl = 'https://api.counterapi.dev/v2/sarguardians/sarguardians/up';
+  const fallbackKey = 'saveblatten_visits_v1';
+
+  // Helper to safely set badge and optionally mark it as local
+  const setBadge = (n, { local=false } = {}) => {
+    badge.textContent = n;
+    badge.dataset.local = local ? '1' : '';
+    // Optionally add a subtle visual indicator for local values:
+    // badge.style.opacity = local ? '0.8' : '';
+  };
+
+  try {
+    const resp = await fetch(apiUrl, { method: 'GET' });
+    if (!resp.ok) {
+      console.warn('CounterAPI responded with status', resp.status);
+      // Do NOT increment local fallback here — we'll keep previous value
+      const prev = parseInt(localStorage.getItem(fallbackKey) || '0', 10);
+      if (prev) setBadge(prev, { local: true });
       return;
     }
 
-    // otherwise geocode
-    searchBtn.disabled = true; const saved = searchBtn.innerHTML; searchBtn.innerHTML = '...';
-    try {
-      const results = await geocodeNominatim(q);
-      if (!results || results.length === 0) { alert(`No results for "${q}"`); return; }
-      const r = results[0];
-      initMapIfNeeded();
-      placeSearchMarker(parseFloat(r.lat), parseFloat(r.lon), r.display_name);
-    } catch (err) {
-      alert('Search error: ' + err.message);
-    } finally {
-      searchBtn.disabled = false; searchBtn.innerHTML = saved;
-    }
-  });
+    const data = await resp.json();
+    // Try multiple known possible shapes:
+    const maybe =
+      // v2 client examples: { value: 123 }
+      (typeof data.value === 'number' && data.value) ||
+      // some examples in docs: { data: { up_count: 123 } }
+      (data && data.data && (data.data.up_count || data.data.count || data.data.value)) ||
+      // legacy/other: { count: 123 } or { data:123 }
+      (typeof data.count === 'number' && data.count) ||
+      (typeof data.data === 'number' && data.data);
 
-  // Visitor counter (attempt server, fall back to localStorage)
-  tryServerVisit(); // async try increment on server
-  showLocalVisit();  // immediately show local count
-}
-
-// ---------- Visitor counting ----------
-function showLocalVisit() {
-  const key = 'localVisits_v1';
-  let c = parseInt(localStorage.getItem(key) || '0', 10);
-  c = c + 1;
-  localStorage.setItem(key, String(c));
-  const el = document.getElementById('visitCountBadge');
-  if (el) el.textContent = c;
-}
-
-// If you want real global counts, run the optional server (Flask/Node) below.
-// tryServerVisit will POST to /api/visit (if you host such an endpoint).
-async function tryServerVisit() {
-  const badge = document.getElementById('visitCountBadge');
-  if (!badge) return;
-  // try POST (increment) first
-  try {
-    const resp = await fetch('/api/visit', { method: 'POST' });
-    if (resp.ok) {
-      const j = await resp.json();
-      if (j && j.count !== undefined) {
-        badge.textContent = j.count;
-        return;
-      }
+    if (maybe) {
+      setBadge(Number(maybe), { local: false });
+      // keep localStorage in sync as a last-known-good copy (but don't *pretend* it's authoritative)
+      try { localStorage.setItem(fallbackKey, String(maybe)); } catch(e) { /* ignore */ }
+      return;
+    } else {
+      console.warn('CounterAPI: unexpected JSON shape', data);
+      // If API worked (200) but we can't parse count, show previous fallback if any:
+      const prev = parseInt(localStorage.getItem(fallbackKey) || '0', 10);
+      if (prev) setBadge(prev, { local: true });
+      return;
     }
   } catch (err) {
-    // server not available — use localStorage (already set)
-  }
-
-  // fallback: GET /api/count if POST not allowed
-  try {
-    const resp2 = await fetch('/api/count');
-    if (resp2.ok) {
-      const j2 = await resp2.json();
-      if (j2 && j2.count !== undefined) {
-        badge.textContent = j2.count;
-        return;
-      }
+    // network/CORS/runtime error — don't increment blindly
+    console.warn('CounterAPI fetch failed:', err);
+    const prev = parseInt(localStorage.getItem(fallbackKey) || '0', 10);
+    if (prev) {
+      // show the last-known local value but mark it as local-only
+      setBadge(prev, { local: true });
+    } else {
+      // nothing known — set to 1 locally if you want to track visits, but clearly mark it local
+      try { localStorage.setItem(fallbackKey, '1'); setBadge(1, { local: true }); } catch(e) {}
     }
-  } catch (err) {}
+  }
 }
 
-// ---------- DOM ready ----------
-document.addEventListener('DOMContentLoaded', () => {
-  initUI();
-  // create map now because dashboard is visible by default
-  initMapIfNeeded();
-  setTimeout(()=>{ try { map.invalidateSize(true); } catch(e){} }, 300);
-});
+  // --- UI init ---
+  function initUI() {
+    initTabs();
+
+    const searchInput = document.getElementById('mapSearchInput');
+    const searchBtn = document.getElementById('mapSearchBtn');
+    if (searchInput) searchInput.addEventListener('keydown', (ev)=>{if(ev.key==='Enter'){ev.preventDefault(); searchBtn && searchBtn.click();}});
+    if (searchBtn) searchBtn.addEventListener('click', async () => {
+      const q = searchInput ? searchInput.value.trim() : '';
+      if (!q) { alert('Type a place or coordinates (lat,lon)'); return; }
+      const coords = q.match(/^\s*([+-]?\d+(\.\d+)?)\s*[ ,;]\s*([+-]?\d+(\.\d+)?)\s*$/);
+      if (coords) { 
+        const lat=parseFloat(coords[1]), lon=parseFloat(coords[3]);
+        initMapIfNeeded(); placeSearchMarker(lat,lon,`Coordinates: ${lat.toFixed(6)}, ${lon.toFixed(6)}`);
+        return; 
+      }
+      searchBtn.disabled = true; const saved=searchBtn.innerHTML; searchBtn.innerHTML='...';
+      try { 
+        const results = await geocodeNominatim(q);
+        if(!results||!results.length){ alert(`No results for "${q}"`); return; }
+        const r=results[0]; initMapIfNeeded();
+        placeSearchMarker(parseFloat(r.lat),parseFloat(r.lon),r.display_name);
+      } catch(err){ console.error(err); alert('Search error: could not contact geocoding service.'); } 
+      finally { searchBtn.disabled=false; searchBtn.innerHTML=saved; }
+    });
+
+    incrementVisitorCounter();
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    initUI();
+    const dashboardEl = document.getElementById('dashboard');
+    const isVisible = dashboardEl && (dashboardEl.style.display!=='none');
+    if (isVisible) { initMapIfNeeded(); setTimeout(()=>{try{map.invalidateSize(true);}catch(e){}},300); }
+  });
+
+  // --- expose map for debug ---
+  window.appMap = { getMap: ()=>map, placeSearchMarker: placeSearchMarker };
+})();
