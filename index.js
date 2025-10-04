@@ -1,12 +1,5 @@
-// index.js - Full robust replacement
-// Features:
-// - Map in #dashboard only
-// - Nominatim search (text or "lat,lon")
-// - Layer toggles: #toggle-s2, #toggle-vel, #toggle-geo
-// - Loads geojson from multiple paths
-// - Visitor badge with CounterAPI + fallback
-// - Tab handling with map.invalidateSize()
-// - Fully resilient
+// public/js/index.js
+// Client-side app logic (map, geocode, geojson, visitor badge proxy to /api/counter)
 
 (function () {
   'use strict';
@@ -137,73 +130,77 @@
     const initial = active ? (active.getAttribute('href')||'').replace('#','') : 'dashboard';
     showPanelById(initial || 'dashboard');
   }
-// --- CounterAPI / visitor badge ---
-async function incrementVisitorCounter() {
-  const badge = document.getElementById('visitCountBadge');
-  if (!badge) return;
 
-  // ✅ USE YOUR VERCEL API:
-  const proxyEndpoint = 'https://sar-guardians-web.vercel.app/api/counter';
-  const fallbackKey = 'saveblatten_visits_v1';
+  // --- CounterAPI / visitor badge ---
+  async function incrementVisitorCounter() {
+    const badge = document.getElementById('visitCountBadge');
+    if (!badge) return;
 
-  const setBadge = (n, { local = false, note = '' } = {}) => {
-    badge.textContent = n;
-    if (local) {
-      badge.dataset.local = '1';
-      badge.title = note || 'Local last-known value (remote unreachable)';
-    } else {
-      delete badge.dataset.local;
-      badge.title = '';
-    }
-  };
+    // Proxy endpoint on same domain — deploy api/counter.js and this will call it.
+    const proxyEndpoint = '/api/counter';
+    // If you want to call an absolute URL use:
+    // const proxyEndpoint = 'https://sar-guardians-web.vercel.app/api/counter';
 
-  try {
-    const resp = await fetch(proxyEndpoint, {
-      method: 'GET',
-      cache: 'no-store'
-    });
+    const fallbackKey = 'saveblatten_visits_v1';
 
-    if (!resp.ok) {
-      console.warn('Proxy returned non-OK status', resp.status);
+    const setBadge = (n, { local = false, note = '' } = {}) => {
+      badge.textContent = n;
+      if (local) {
+        badge.dataset.local = '1';
+        badge.title = note || 'Local last-known value (remote unreachable)';
+      } else {
+        delete badge.dataset.local;
+        badge.title = '';
+      }
+    };
+
+    try {
+      const resp = await fetch(proxyEndpoint, {
+        method: 'GET',
+        cache: 'no-store'
+      });
+
+      if (!resp.ok) {
+        console.warn('Proxy returned non-OK status', resp.status);
+        const prev = parseInt(localStorage.getItem(fallbackKey) || '0', 10);
+        if (prev)
+          setBadge(prev, { local: true, note: 'Remote returned non-OK status' });
+        return;
+      }
+
+      const data = await resp.json();
+
+      // read up_count directly from our proxy
+      const up = data.up_count;
+
+      if (up !== undefined && up !== null) {
+        setBadge(Number(up), { local: false });
+        try {
+          localStorage.setItem(fallbackKey, String(up));
+        } catch (_) {}
+        return;
+      }
+
+      console.warn('Proxy: unexpected JSON shape', data);
       const prev = parseInt(localStorage.getItem(fallbackKey) || '0', 10);
       if (prev)
-        setBadge(prev, { local: true, note: 'Remote returned non-OK status' });
-      return;
-    }
-
-    const data = await resp.json();
-
-    // ✅ NEW: read up_count directly from our Vercel proxy
-    const up = data.up_count;
-
-    if (up !== undefined && up !== null) {
-      setBadge(Number(up), { local: false });
-      try {
-        localStorage.setItem(fallbackKey, String(up));
-      } catch (_) {}
-      return;
-    }
-
-    console.warn('Proxy: unexpected JSON shape', data);
-    const prev = parseInt(localStorage.getItem(fallbackKey) || '0', 10);
-    if (prev)
-      setBadge(prev, { local: true, note: 'Unexpected JSON shape' });
-  } catch (err) {
-    console.warn('Proxy fetch failed:', err);
-    const prev = parseInt(localStorage.getItem(fallbackKey) || '0', 10);
-    if (prev) {
-      setBadge(prev, {
-        local: true,
-        note: 'Request blocked or network error — value is local last-known'
-      });
-    } else {
-      setBadge(0, {
-        local: true,
-        note: 'Request blocked or network error — no last-known value'
-      });
+        setBadge(prev, { local: true, note: 'Unexpected JSON shape' });
+    } catch (err) {
+      console.warn('Proxy fetch failed:', err);
+      const prev = parseInt(localStorage.getItem(fallbackKey) || '0', 10);
+      if (prev) {
+        setBadge(prev, {
+          local: true,
+          note: 'Request blocked or network error — value is local last-known'
+        });
+      } else {
+        setBadge(0, {
+          local: true,
+          note: 'Request blocked or network error — no last-known value'
+        });
+      }
     }
   }
-}
 
   // --- UI init ---
   function initUI() {
